@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
 		});
 
 		try {
-			sPool.load(getResources().getAssets().openFd("idina_menzel-let_it_go.mid"), 1);			
+			sPool.load(getResources().getAssets().openFd("katy_perry-dark_horse.mid"), 1);			
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
