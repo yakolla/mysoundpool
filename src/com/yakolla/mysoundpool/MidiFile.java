@@ -874,6 +874,118 @@ public class MidiFile {
         file.close();
     }
 
+    private static void
+    WriteEvents2(FileOutputStream file, ArrayList<ArrayList<MidiEvent>> allevents, 
+                  int trackmode, int quarter) throws IOException {
+
+        byte[] buf = new byte[16384];
+
+        /* Write the MThd, len = 6, track mode, number tracks, quarter note */
+        file.write("MThd".getBytes("US-ASCII"), 0, 4);
+        IntToBytes(6, buf, 0);
+        file.write(buf, 0, 4);
+        buf[0] = (byte)(trackmode >> 8); 
+        buf[1] = (byte)(trackmode & 0xFF);
+        file.write(buf, 0, 2);
+        buf[0] = 0; 
+        buf[1] = (byte)allevents.size();
+        file.write(buf, 0, 2);
+        buf[0] = (byte)(quarter >> 8); 
+        buf[1] = (byte)(quarter & 0xFF);
+        file.write(buf, 0, 2);
+
+        for (ArrayList<MidiEvent> list : allevents) {
+            /* Write the MTrk header and track length */
+            file.write("MTrk".getBytes("US-ASCII"), 0, 4);
+            int len = GetTrackLength(list);
+            IntToBytes(len, buf, 0);
+            file.write(buf, 0, 4);
+
+            for (MidiEvent mevent : list) {
+            	if (1080 <= mevent.StartTime && mevent.StartTime <= 1560 )
+            	{
+            		
+            		
+                int varlen = VarlenToBytes(mevent.DeltaTime, buf, 0);
+                file.write(buf, 0, varlen);
+
+                if (mevent.EventFlag == SysexEvent1 ||
+                    mevent.EventFlag == SysexEvent2 ||
+                    mevent.EventFlag == MetaEvent) {
+                    buf[0] = mevent.EventFlag;
+                }
+                else {
+                    buf[0] = (byte)(mevent.EventFlag + mevent.Channel);
+                }
+                file.write(buf, 0, 1);
+
+                if (mevent.EventFlag == EventNoteOn) {
+                    buf[0] = mevent.Notenumber;
+                    buf[1] = mevent.Velocity;
+                    file.write(buf, 0, 2);
+                    
+                }
+                else if (mevent.EventFlag == EventNoteOff) {
+                	
+                    buf[0] = mevent.Notenumber;
+                    buf[1] = mevent.Velocity;
+                    file.write(buf, 0, 2);
+                    
+                }
+                else if (mevent.EventFlag == EventKeyPressure) {
+                    buf[0] = mevent.Notenumber;
+                    buf[1] = mevent.KeyPressure;
+                    file.write(buf, 0, 2);
+                }
+                else if (mevent.EventFlag == EventControlChange) {
+                    buf[0] = mevent.ControlNum;
+                    buf[1] = mevent.ControlValue;
+                    file.write(buf, 0, 2);
+                }
+                else if (mevent.EventFlag == EventProgramChange) {
+                    buf[0] = mevent.Instrument;
+                    file.write(buf, 0, 1);
+                }
+                else if (mevent.EventFlag == EventChannelPressure) {
+                    buf[0] = mevent.ChanPressure;
+                    file.write(buf, 0, 1);
+                }
+                else if (mevent.EventFlag == EventPitchBend) {
+                    buf[0] = (byte)(mevent.PitchBend >> 8);
+                    buf[1] = (byte)(mevent.PitchBend & 0xFF);
+                    file.write(buf, 0, 2);
+                }
+                else if (mevent.EventFlag == SysexEvent1) {
+                    int offset = VarlenToBytes(mevent.Metalength, buf, 0);
+                    ArrayCopy(mevent.Value, 0, buf, offset, mevent.Value.length);
+                    file.write(buf, 0, offset + mevent.Value.length);
+                }
+                else if (mevent.EventFlag == SysexEvent2) {
+                    int offset = VarlenToBytes(mevent.Metalength, buf, 0);
+                    ArrayCopy(mevent.Value, 0, buf, offset, mevent.Value.length);
+                    file.write(buf, 0, offset + mevent.Value.length);
+                }
+                else if (mevent.EventFlag == MetaEvent && mevent.Metaevent == MetaEventTempo) {
+                    buf[0] = mevent.Metaevent;
+                    buf[1] = 3;
+                    buf[2] = (byte)((mevent.Tempo >> 16) & 0xFF);
+                    buf[3] = (byte)((mevent.Tempo >> 8) & 0xFF);
+                    buf[4] = (byte)(mevent.Tempo & 0xFF);
+                    file.write(buf, 0, 5);
+                }
+                else if (mevent.EventFlag == MetaEvent) {
+                    buf[0] = mevent.Metaevent;
+                    int offset = VarlenToBytes(mevent.Metalength, buf, 1) + 1;
+                    ArrayCopy(mevent.Value, 0, buf, offset, mevent.Value.length);
+                    file.write(buf, 0, offset + mevent.Value.length);
+                    
+                }
+            	}
+                Log.d("AAA", mevent.toString());
+            }
+        }
+        file.close();
+    }
 
     /** Clone the list of MidiEvents */
     private static ArrayList<ArrayList<MidiEvent>> 
@@ -986,6 +1098,20 @@ public class MidiFile {
         }
         WriteEvents(destfile, newevents, trackmode, quarternote);
     }
+    
+    public void Write2(FileOutputStream destfile, MidiOptions options) 
+    	      throws IOException {
+    	        ArrayList<ArrayList<MidiEvent>> newevents = allevents;
+    	        if (options != null) {
+    	            newevents = ApplyOptionsToEvents(options);
+    	        }
+    	        
+    	        
+    	        newevents = new ArrayList<ArrayList<MidiEvent>>();
+    	        newevents.add(allevents.get(1));
+    	        
+    	        WriteEvents2(destfile, newevents, trackmode, quarternote);
+    	    }
 
     /** Apply the following sound options to the midi events:
      * - The tempo (the microseconds per pulse)
