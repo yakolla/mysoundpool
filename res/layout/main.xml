@@ -2,5 +2,33 @@
 <HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
 	android:id="@+id/view_key" android:layout_height="fill_parent"
 	android:layout_width="wrap_content" android:layout_gravity="center_vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal" >
+
+        <EditText
+            android:id="@+id/editText1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="numberDecimal" >
+
+            <requestFocus />
+        </EditText>
+        
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Button"
+            android:onClick="clickMethod" 
+            />
+
+        
+
+    </LinearLayout>
 	
 </HorizontalScrollView>

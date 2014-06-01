@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.yakolla.mysoundpool.R;
 
@@ -17,6 +18,8 @@ import android.media.SoundPool.OnLoadCompleteListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -25,6 +28,7 @@ public class MainActivity extends Activity {
 	private SoundPool sPool; // 사운드 풀
 	private AudioManager mAudioManager;
 	private int	loadedCount = 0;
+	private EditText txtEdit;
 	public static final String TAG = "MYSOUNDPOOL";
 	
 	/** Called when the activity is first created. */
@@ -34,6 +38,7 @@ public class MainActivity extends Activity {
 		
 		setContentView(R.layout.main);	
 		
+		txtEdit = (EditText)findViewById(R.id.editText1);
 		midi = new MediaPlayer();
 		mAudioManager = (AudioManager)getSystemService(AUDIO_SERVICE);
 		
@@ -43,9 +48,7 @@ public class MainActivity extends Activity {
 		    	++loadedCount;
 		    	Log.d(TAG, "sampleid: " + sampleId);
 		    	
-		    	float volume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-			    soundPool.play(sampleId, volume, volume, 0, 0, 1);
-			    
+		    	
 		    	
 		    }
 		});
@@ -53,7 +56,12 @@ public class MainActivity extends Activity {
 		loadAssetMidiFile("Bach__Prelude_in_C_major.mid");
 		
 	}
-	
+	public void clickMethod(View v)
+	{
+		float volume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+		sPool.play(Integer.parseInt(txtEdit.getText().toString()), volume, volume, 0, 0, 1);
+	    
+	}
 	void loadAssetMidiFile(String fileName) {
 		
         Uri uri = Uri.parse("file:///android_asset/" + fileName);
@@ -62,20 +70,31 @@ public class MainActivity extends Activity {
         try {
             data = file.getData(this);
             MidiFile midifile = new MidiFile(data, uri.getLastPathSegment());
+            ArrayList<Integer> wroteLenList = new ArrayList<Integer>();
             
-            FileOutputStream destOutput = openFileOutput("temp.mid", Context.MODE_PRIVATE);
-            midifile.Write2(destOutput, null);
-            destOutput.close();
+            wroteLenList = midifile.Write2(null, this);
             
             FileInputStream input = openFileInput("temp.mid");
             
-            midi.setDataSource(input.getFD());            
-            //sPool.load(input.getFD(), 0, 0, 1);	
+            midi.setDataSource(input.getFD()); 
+            
+            int i = 0;
+            int offset = 0;
+            for (Integer wroteLen : wroteLenList)
+            {
+            	if (i >= 0 && i < 10) {
+            		sPool.load(input.getFD(), offset, wroteLen, 1);	
+            	}
+            		
+            	offset += wroteLen;
+            	++i;
+            }
+            	
             
             input.close();
             
             midi.prepare();
-            midi.start();
+            //midi.start();
              
             
         }
