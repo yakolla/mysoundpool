@@ -11,6 +11,8 @@ import com.yakolla.mysoundpool.R;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.SoundPool;
@@ -20,12 +22,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
+import android.view.animation.AnimationUtils;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity  {
 	
 	private MediaPlayer midi;
 	private SoundPool sPool; // 사운드 풀
@@ -33,12 +39,19 @@ public class MainActivity extends Activity {
 	private int	loadedCount = 0;
 	private EditText txtEdit;
 	private TextView txtView;
+	private GamePlay gamePlay;
+	
 	public static final String TAG = "MYSOUNDPOOL";
 	
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);		
+		
+		
+		LinearLayout layout = (LinearLayout)findViewById(R.id.layout1);
+		gamePlay = new GamePlay(this);
+		layout.addView(gamePlay);
 		
 		setContentView(R.layout.main);	
 		
@@ -58,9 +71,13 @@ public class MainActivity extends Activity {
 		    }
 		});
 		
-		loadAssetMidiFile("Bach__Prelude_in_C_major.mid");
-		
+		loadAssetMidiFile("idina_menzel-let_it_go.mid");
+		layout.requestLayout();
+		gamePlay.callOnDraw();
 	}
+	
+	
+	
 	public void clickMethod(View v)
 	{
 		float volume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
@@ -83,7 +100,7 @@ public class MainActivity extends Activity {
         Uri uri = Uri.parse("file:///android_asset/" + fileName);
         FileUri file = new FileUri(uri, fileName);
         byte[] data;
-        int playtrack = 0;
+        int playtrack = 1;
         try {
             data = file.getData(this);
             MidiFile midifile = new MidiFile(data, uri.getLastPathSegment());
@@ -125,6 +142,7 @@ public class MainActivity extends Activity {
         }
     }
 	
+	
 	long startTime;             /** Absolute time when music started playing (msec) */
     double currentPulseTime;    /** Time (in pulses) music is currently at */
     double finishPulseTime;    /** Time (in pulses) music is currently at */
@@ -142,6 +160,8 @@ public class MainActivity extends Activity {
 	            
 	            txtView.setText(""+currentPulseTime);
 	            clickMethod(null);
+	            
+	            gamePlay.callOnDraw();
 	            timer.postDelayed(TimerCallback, 300);
 	      }
 	    };
