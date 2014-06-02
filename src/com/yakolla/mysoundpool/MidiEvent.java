@@ -88,7 +88,7 @@ public class MidiEvent implements Comparator<MidiEvent> {
     
     public String toString()
     {
-    	return "Channel:"+Channel+" StartTime:"+StartTime+" EventFlag:"+EventFlag+" Notenumber:"+Notenumber;
+    	return "Channel:"+Channel+" StartTime:"+StartTime+" DeltaTime:"+DeltaTime+" EventFlag:"+EventFlag+" Notenumber:"+Notenumber;
     }
 }
 

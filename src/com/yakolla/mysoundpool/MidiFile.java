@@ -879,7 +879,7 @@ public class MidiFile {
 
     private static int
     WriteEvents2(FileOutputStream file, ArrayList<MidiEvent> events, 
-                  int trackmode, int quarter, int startTimer, int endTimer) throws IOException {
+                  int trackmode, int quarter) throws IOException {
 
     	int wroteLen = 0;
         byte[] buf = new byte[16384];
@@ -908,7 +908,7 @@ public class MidiFile {
         
         for (MidiEvent mevent : events) {
         	
-        	//if (startTimer <= mevent.StartTime && mevent.StartTime <= endTimer)
+        	
         	{
         		
         		
@@ -1104,7 +1104,7 @@ public class MidiFile {
         WriteEvents(destfile, newevents, trackmode, quarternote);
     }
     
-    public ArrayList<Integer> Write2(MidiOptions options, Activity act) throws IOException 
+    public ArrayList<Integer> Write2(MidiOptions options, Activity act, int playtrack) throws IOException 
     {
     	ArrayList<Integer> times = new ArrayList<Integer>();
 		ArrayList<Integer> wroteLenList = new ArrayList<Integer>();
@@ -1115,7 +1115,7 @@ public class MidiFile {
         
         
         newevents = new ArrayList<ArrayList<MidiEvent>>();
-        newevents.add(allevents.get(0));
+        newevents.add(allevents.get(playtrack));
         
         HashMap<Integer, ArrayList<MidiEvent>> map = new HashMap<Integer, ArrayList<MidiEvent>>();
         for (ArrayList<MidiEvent> events : newevents) {            
@@ -1131,21 +1131,7 @@ public class MidiFile {
         		map.get(list.StartTime).add(list);
         	}            
         }       
-        /*
-        for (int i = 0; i < times.size()-1; ++i)
-        {
-        	ArrayList<MidiEvent> sameEvents = new ArrayList<MidiEvent>();
-        	
-        	sameEvents.addAll(map.get(times.get(i)));
-        	sameEvents.addAll(map.get(times.get(i+1)));
-        	
-        	FileOutputStream destfile = act.openFileOutput("temp" + wroteLenList.size()+".mid", Context.MODE_PRIVATE);
-    		int wroteLen = WriteEvents2(destfile, sameEvents, trackmode, quarternote, times.get(i), times.get(i+1));
-            destfile.close();
-            
-    		Log.d("AAA", "wroteLen:"+wroteLen);
-    		wroteLenList.add(wroteLen);	
-        }*/
+        
         
         FileOutputStream destfile = act.openFileOutput("temp"+".mid", Context.MODE_PRIVATE);
         for (int i = 0; i < times.size()-1; ++i)
@@ -1153,14 +1139,54 @@ public class MidiFile {
         	ArrayList<MidiEvent> sameEvents = new ArrayList<MidiEvent>();
         	
         	sameEvents.addAll(map.get(times.get(i)));
-        	sameEvents.addAll(map.get(times.get(i+1)));
         	
         	
-    		int wroteLen = WriteEvents2(destfile, sameEvents, trackmode, quarternote, times.get(i), times.get(i+1));
+        	ArrayList<Byte> noteOnList = new ArrayList<Byte>();
+        	for (MidiEvent mevent : map.get(times.get(i)))
+        	{
+        		if (mevent.EventFlag == EventNoteOn)
+        		{
+        			noteOnList.add(mevent.Notenumber);
+        		}
+        	}
+        	
+        	if (noteOnList.isEmpty() == true)
+        	{
+        		continue;
+        	}
+        	
+        	
+        	ArrayList<Byte> noteOffList = new ArrayList<Byte>();
+        	for (int j = i+1; j < times.size()-1; ++j)
+        	{
+        		ArrayList<MidiEvent> nextEventList = map.get(times.get(j)); 
+        		sameEvents.addAll(nextEventList);
+        		
+            	for (Byte noteNumber : noteOnList)
+            	{
+            		for (MidiEvent mevent : nextEventList)
+                	{
+                		if (mevent.EventFlag == EventNoteOff && mevent.Notenumber == noteNumber)
+                		{
+                			noteOffList.add(noteNumber);
+                		}
+                	}
+            	}
+            	
+            	if (noteOnList.size() == noteOffList.size())
+            	{
+            		break;
+            	}
+            	
+        	}
+        	
+        	
+    		int wroteLen = WriteEvents2(destfile, sameEvents, trackmode, quarternote);
             
             
-    		Log.d("AAA", "wroteLen:"+wroteLen);
+    		Log.d("AAA", "num:"+wroteLenList.size()+" wroteLen:"+wroteLen);
     		wroteLenList.add(wroteLen);	
+    		
         }
         
         destfile.close();
