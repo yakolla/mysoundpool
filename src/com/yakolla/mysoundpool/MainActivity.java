@@ -10,6 +10,7 @@ import com.yakolla.mysoundpool.R;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -33,13 +34,13 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity  {
 	
-	private MediaPlayer midi;
+	private MediaPlayer mediaPlayer;
 	private SoundPool sPool; // 사운드 풀
 	private AudioManager mAudioManager;
 	private int	loadedCount = 0;
 	private EditText txtEdit;
 	private TextView txtView;
-	private GamePlay gamePlay;
+	private GamePlayView gamePlay;
 	
 	public static final String TAG = "MYSOUNDPOOL";
 	
@@ -48,16 +49,17 @@ public class MainActivity extends Activity  {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);		
 		
+		setContentView(R.layout.main);	
 		
 		LinearLayout layout = (LinearLayout)findViewById(R.id.layout1);
-		gamePlay = new GamePlay(this);
-		layout.addView(gamePlay);
+		gamePlay = (GamePlayView)findViewById(R.id.gamePlay);
 		
-		setContentView(R.layout.main);	
+		
+		
 		
 		txtEdit = (EditText)findViewById(R.id.editText1);
 		txtView = (TextView)findViewById(R.id.textView1);
-		midi = new MediaPlayer();
+		mediaPlayer = new MediaPlayer();
 		mAudioManager = (AudioManager)getSystemService(AUDIO_SERVICE);
 		
 		sPool = new SoundPool(3, AudioManager.STREAM_MUSIC, 0);
@@ -71,7 +73,7 @@ public class MainActivity extends Activity  {
 		    }
 		});
 		
-		loadAssetMidiFile("idina_menzel-let_it_go.mid");
+		loadAssetMidiFile("steel_heart-shes_gone.mid");
 		layout.requestLayout();
 		gamePlay.callOnDraw();
 	}
@@ -90,30 +92,30 @@ public class MainActivity extends Activity  {
 	
 	public void onClickPlayBackground(View v)
 	{
-		midi.start();
+		mediaPlayer.start();
 
+		startTimeForBackgroundMusic = SystemClock.uptimeMillis();
 		startTime = SystemClock.uptimeMillis();
-        timer.postDelayed(TimerCallback, 0);
+		thread.start();
 	}
 	void loadAssetMidiFile(String fileName) {
 		
         Uri uri = Uri.parse("file:///android_asset/" + fileName);
         FileUri file = new FileUri(uri, fileName);
         byte[] data;
-        int playtrack = 1;
+        int playtrack = 10;
         try {
             data = file.getData(this);
             MidiFile midifile = new MidiFile(data, uri.getLastPathSegment());
-            ArrayList<Integer> wroteLenList = new ArrayList<Integer>();            
             
-            wroteLenList = midifile.Write2(null, this, playtrack);
+            MidiFileWriteResult midifileWriteResult = midifile.Write2(null, this, playtrack);
             
             FileInputStream input = openFileInput("temp.mid");            
             
             int offset = 0;
-            for (Integer wroteLen : wroteLenList)
+            for (Integer wroteLen : midifileWriteResult.wroteLenList)
             {
-            	sPool.load(input.getFD(), offset, wroteLen, 1);	
+            	//sPool.load(input.getFD(), offset, wroteLen, 1);	
             		
             	offset += wroteLen;
             }
@@ -126,14 +128,19 @@ public class MainActivity extends Activity  {
             midifile.Write(openFileOutput("background.mid", Context.MODE_PRIVATE ), midiOption);
             
             FileInputStream background = openFileInput("background.mid");
-            midi.setDataSource(background.getFD());
+            mediaPlayer.setDataSource(background.getFD());
+            //AssetFileDescriptor descriptor = descriptor = getAssets().openFd(fileName);
+            //mediaPlayer.setDataSource( descriptor.getFileDescriptor(), descriptor.getStartOffset(),  descriptor.getLength() );
+            
             background.close();
             
-            midi.prepare();
+            mediaPlayer.prepare();
             
             
             pulsesPerMsec = midifile.getTime().getQuarter() * (1000.0 / midiOption.tempo);
             finishPulseTime = midifile.getTotalPulses();
+            
+            gamePlay.init(100, (int)finishPulseTime+10, midifileWriteResult.mevents);
             
         }
         catch (IOException e) {
@@ -143,26 +150,48 @@ public class MainActivity extends Activity  {
     }
 	
 	
-	long startTime;             /** Absolute time when music started playing (msec) */
+	long startTimeForBackgroundMusic;             /** Absolute time when music started playing (msec) */
     double currentPulseTime;    /** Time (in pulses) music is currently at */
     double finishPulseTime;    /** Time (in pulses) music is currently at */
     double pulsesPerMsec;
+    long startTime;
     Handler timer = new Handler();
+    
 	Runnable TimerCallback = new Runnable() {
 	      public void run() {
 	        
-	            long msec = SystemClock.uptimeMillis() - startTime;
-	            currentPulseTime = msec * pulsesPerMsec;
+	    	  	
+	    	  	while(true)
+	    	  	{
+	    	  		long ctime = SystemClock.uptimeMillis();
+		            long msec = ctime - startTimeForBackgroundMusic;
+		    	  	long interval = ctime-startTime;
+	    	  		currentPulseTime = msec * pulsesPerMsec;
+		            
+		            if (currentPulseTime > finishPulseTime) {
+		                break;
+		            }
+		            
+		            if (interval < 30)
+		            {
+		            	try {
+							Thread.sleep(30-interval);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+		            	continue;
+		            }
+		            
+		            //txtView.setText(""+currentPulseTime);
+		            
+		            gamePlay.updateScroll(0, -(int)currentPulseTime);
+		            gamePlay.callOnDraw();	            
+		            startTime = ctime;	
+	    	  	}
 	            
-	            if (currentPulseTime > finishPulseTime) {
-	                return;
-	            }
 	            
-	            txtView.setText(""+currentPulseTime);
-	            clickMethod(null);
-	            
-	            gamePlay.callOnDraw();
-	            timer.postDelayed(TimerCallback, 300);
 	      }
 	    };
+	Thread thread = new Thread(TimerCallback);
 }

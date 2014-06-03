@@ -1104,33 +1104,31 @@ public class MidiFile {
         WriteEvents(destfile, newevents, trackmode, quarternote);
     }
     
-    public ArrayList<Integer> Write2(MidiOptions options, Activity act, int playtrack) throws IOException 
+    public MidiFileWriteResult Write2(MidiOptions options, Activity act, int playtrack) throws IOException 
     {
+    	MidiFileWriteResult result = new MidiFileWriteResult();
+    	
     	ArrayList<Integer> times = new ArrayList<Integer>();
-		ArrayList<Integer> wroteLenList = new ArrayList<Integer>();
+		
         ArrayList<ArrayList<MidiEvent>> newevents = allevents;
         if (options != null) {
             newevents = ApplyOptionsToEvents(options);
         }
         
         
-        newevents = new ArrayList<ArrayList<MidiEvent>>();
-        newevents.add(allevents.get(playtrack));
-        
         HashMap<Integer, ArrayList<MidiEvent>> map = new HashMap<Integer, ArrayList<MidiEvent>>();
-        for (ArrayList<MidiEvent> events : newevents) {            
         	
-        	for (MidiEvent list : events) {
-        		
-        		if (map.containsKey(list.StartTime) == false)
-        		{
-        			map.put(list.StartTime, new ArrayList<MidiEvent>());
-        			times.add(list.StartTime);
-        		}
+    	for (MidiEvent list : newevents.get(playtrack)) {
+    		
+    		if (map.containsKey(list.StartTime) == false)
+    		{
+    			map.put(list.StartTime, new ArrayList<MidiEvent>());
+    			times.add(list.StartTime);
+    		}
 
-        		map.get(list.StartTime).add(list);
-        	}            
-        }       
+    		map.get(list.StartTime).add(list);
+    	}            
+               
         
         
         FileOutputStream destfile = act.openFileOutput("temp"+".mid", Context.MODE_PRIVATE);
@@ -1170,6 +1168,11 @@ public class MidiFile {
                 		{
                 			noteOffList.add(noteNumber);
                 		}
+                		else if(mevent.EventFlag == EventNoteOn && mevent.Notenumber == noteNumber)
+                		{
+                			noteOffList.add(noteNumber);
+                			i = j;
+                		}
                 	}
             	}
             	
@@ -1184,13 +1187,15 @@ public class MidiFile {
     		int wroteLen = WriteEvents2(destfile, sameEvents, trackmode, quarternote);
             
             
-    		Log.d("AAA", "num:"+wroteLenList.size()+" wroteLen:"+wroteLen);
-    		wroteLenList.add(wroteLen);	
+    		Log.d("AAA", "num:"+result.wroteLenList.size()+" wroteLen:"+wroteLen);
+    		result.wroteLenList.add(wroteLen);	
     		
         }
         
         destfile.close();
-        return wroteLenList;
+        
+        result.mevents = newevents.get(playtrack);
+        return result;
     }
     
     
